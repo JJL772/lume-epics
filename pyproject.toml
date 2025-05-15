@@ -1,0 +1,54 @@
+[project]
+name = "lume-epics"
+version = "0.0.0"
+requires-python = ">=3.10"
+license-files = ["LICENSE"]
+authors = [
+    {name = "SLAC National Accelerator Laboratory", email = "jgarra@slac.stanford.edu"}
+]
+
+dependencies = [
+    "pcaspy",
+    "pyepics",
+    "p4p",
+    "numpy",
+    "bokeh",
+    "click",
+    "pyyaml",
+    "lume-model>=1.8",
+    "nose>=1.1.2"
+]
+
+[project.urls]
+Repository = "https://github.com/slaclab/lume-epics"
+
+[build-system]
+requires = [
+    "setuptools",
+]
+build-backend = "setuptools.build_meta"
+
+[options]
+include_package_data = true
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "doctr",
+    "black",
+    "mkdocs",
+    "pytest"
+]
+docs = [
+    "mkdocs",
+    "mkdocstrings",
+    "mkdocstrings-python",
+    "mkdocs-material",
+]
+
+[tool.setuptools.packages.find]
+include = ["lume_epics"]
+
+[project.scripts]
+render-from-template = "lume_epics.commands.render_from_template:render_from_template"
+server-from-template = "lume_epics.commands.serve_from_template:serve_from_template"
