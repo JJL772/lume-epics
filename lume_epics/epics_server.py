@@ -9,8 +9,9 @@ except:
     pass
 
 import os
-from typing import Dict, List, Type, Optional
+from typing import Dict, List, Type, Optional, Any
 from threading import Thread, Event
+from multiprocessing.sharedctypes import Synchronized
 from queue import Full, Empty
 
 # require import for libca config
@@ -20,8 +21,8 @@ import pcaspy
 os.environ["PYEPICS_LIBCA"] = os.path.dirname(pcaspy.__file__)
 
 
-from lume_model.variables import Variable, InputVariable, OutputVariable
-from lume_model.models import BaseModel
+from lume_model.variables import Variable
+from lume_model.base import LUMEBaseModel
 
 from lume_epics import EPICS_ENV_VARS
 from .epics_pva_server import PVAServer
@@ -39,9 +40,9 @@ class Server:
     Attributes:
         model (BaseModel): Instantiated model
 
-        input_variables (Dict[str: InputVariable]): Model input variables
+        input_variables (List[Variable]): Model input variables
 
-        output_variables (Dict[str: OutputVariable]): Model output variables
+        output_variables (List[Variable]): Model output variables
 
         epics_config (Optional[Dict]): ...
 
@@ -72,7 +73,7 @@ class Server:
 
     def __init__(
         self,
-        model_class: Type[BaseModel],
+        model_class: Type[LUMEBaseModel],
         epics_config: dict,
         model_kwargs: dict = {},  # TODO DROP and use instantiated mode
         epics_env: dict = {},  # TODO drop hashable default. Should be Optional[dict]
@@ -98,8 +99,8 @@ class Server:
                 os.environ[var] = epics_env[var]
 
         self.model = model_class(**model_kwargs)
-        self.input_variables = self.model.input_variables
-        self.output_variables = self.model.output_variables
+        self.input_variables = {v.name: v for v in self.model.input_variables}
+        self.output_variables = {v.name: v for v in self.model.output_variables}
 
         self._epics_config = epics_config
 
@@ -173,14 +174,14 @@ class Server:
         # initialize channel access server
         if "ca" in self._protocols:
             ca_input_vars = {
-                var_name: var
-                for var_name, var in self.model.input_variables.items()
-                if var_name in ca_config
+                var.name: var
+                for var in self.model.input_variables
+                if var.name in ca_config
             }
             ca_output_vars = {
-                var_name: var
-                for var_name, var in self.model.output_variables.items()
-                if var_name in ca_config
+                var.name: var
+                for var in self.model.output_variables
+                if var.name in ca_config
             }
 
             self.ca_process = CAServer(
@@ -230,7 +231,7 @@ class Server:
     def run_comm_thread(
         self,
         *,
-        running_indicator: multiprocessing.Value,
+        running_indicator: Synchronized[Any],
         in_queue: Optional[multiprocessing.Queue],
         out_queues: Optional[Dict[str, multiprocessing.Queue]],
     ):

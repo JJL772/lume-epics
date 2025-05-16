@@ -10,7 +10,7 @@ import signal
 from typing import List, Union
 from functools import partial
 from typing import Dict
-from lume_model.variables import InputVariable, OutputVariable
+from lume_model.variables import Variable
 from p4p.client.thread import Context
 from p4p.nt import NTScalar, NTNDArray, NTTable
 from p4p.server.thread import SharedPV
@@ -35,8 +35,8 @@ class PVAServer(multiprocessing.Process):
         pva_server (P4PServer): p4p server instance
         exit_event (multiprocessing.Event): Event indicating pvAccess server error and communicating to main
         shutdown_event (multiprocessing.Event): Event indicating shutdown
-        _input_variables (List[InputVariable]): List of input variables
-        _output_variables (List[OutputVariable]): List of output variables
+        _input_variables (Dict[str, Variable]): List of input variables
+        _output_variables (Dict[str, Variable]): List of output variables
         _in_queue (multiprocessing.Queue): input variable queue
         _out_queue (multiprocessing.Queue): output variable update queue
         _providers (dict): Dictionary mapping pvname to p4p provider
@@ -52,8 +52,8 @@ class PVAServer(multiprocessing.Process):
 
     def __init__(
         self,
-        input_variables: List[InputVariable],
-        output_variables: List[OutputVariable],
+        input_variables: Dict[str, Variable],
+        output_variables: Dict[str, Variable],
         epics_config: dict,
         in_queue: multiprocessing.Queue,
         out_queue: multiprocessing.Queue,
@@ -64,9 +64,9 @@ class PVAServer(multiprocessing.Process):
         """Initialize server process.
 
         Args:
-            input_variables (Dict[str, InputVariable]): Dictionary mapping pvname to lume-model input variable.
+            input_variables (Dict[str, Variable]): Dictionary mapping pvname to lume-model input variable.
 
-            output_variables (Dict[str, OutputVariable]):Dictionary mapping pvname to lume-model output variable.
+            output_variables (Dict[str, Variable]):Dictionary mapping pvname to lume-model output variable.
 
             epics_config (dict): Dictionary describing EPICS configuration for model variables
 
@@ -405,15 +405,15 @@ class PVAServer(multiprocessing.Process):
 
     def update_pvs(
         self,
-        input_variables: Dict[str, InputVariable],
-        output_variables: Dict[str, OutputVariable],
+        input_variables: Dict[str, Variable],
+        output_variables: Dict[str, Variable],
     ) -> None:
         """Update process variables over pvAccess.
 
         Args:
-            input_variables (Dict[str, InputVariable]): Dict of lume-epics output variables.
+            input_variables (Dict[str, Variable]): Dict of lume-epics output variables.
 
-            output_variables (Dict[str, OutputVariable]): Dict of lume-model output variables.
+            output_variables (Dict[str, Variable]): Dict of lume-model output variables.
 
         """
         variables = input_variables

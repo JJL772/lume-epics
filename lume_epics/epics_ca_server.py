@@ -4,7 +4,7 @@ import multiprocessing
 import time
 import signal
 from typing import Dict
-from lume_model.variables import Variable, InputVariable, OutputVariable
+from lume_model.variables import Variable
 import numpy as np
 
 import os
@@ -68,9 +68,9 @@ class CAServer(CAProcess):
 
         _ca_driver (Driver): pcaspy Driver instance
 
-        _input_variables (Dict[str, InputVariable]): Mapping of input variable name to variable
+        _input_variables (Dict[str, Variable]): Mapping of input variable name to variable
 
-        _output_variables (Dict[str, InputVariable]): Mapping of output variable name to variable
+        _output_variables (Dict[str, Variable]): Mapping of output variable name to variable
 
         _server_thread (ServerThread): Thread for running the server
 
@@ -92,8 +92,8 @@ class CAServer(CAProcess):
 
     def __init__(
         self,
-        input_variables: Dict[str, InputVariable],
-        output_variables: Dict[str, OutputVariable],
+        input_variables: Dict[str, Variable],
+        output_variables: Dict[str, Variable],
         epics_config: dict,
         in_queue: multiprocessing.Queue,
         out_queue: multiprocessing.Queue,
@@ -104,8 +104,8 @@ class CAServer(CAProcess):
         """Initialize server process.
 
         Args:
-            input_variables (Dict[str, InputVariable]): Dictionary mapping pvname to lume-model input variable.
-            output_variables (Dict[str, OutputVariable]):Dictionary mapping pvname to lume-model output variable.
+            input_variables (Dict[str, Variable]): Dictionary mapping pvname to lume-model input variable.
+            output_variables (Dict[str, Variable]):Dictionary mapping pvname to lume-model output variable.
             epics_config (dict): Dictionary mapping pvname to EPICS configuration.
             in_queue (multiprocessing.Queue): Queue for tracking updates to input variables.
             out_queue (multiprocessing.Queue): Queue for tracking updates to output variables.
@@ -135,7 +135,7 @@ class CAServer(CAProcess):
         }
 
         # cached pv values
-        self._cached_values = {}
+        self._cached_values: Dict[str, Variable] = {}
         self._monitors = {}
 
     def update_pv(self, pvname, value) -> None:
@@ -154,7 +154,7 @@ class CAServer(CAProcess):
         variable = self._input_variables[model_var_name]
 
         # check for already cached variable
-        variable = self._cached_values.get(model_var_name, variable)
+        variable: Variable = self._cached_values.get(model_var_name, variable)
 
         # check for image variable and proper assignments
         if variable.variable_type == "image":
@@ -323,15 +323,15 @@ class CAServer(CAProcess):
 
     def update_pvs(
         self,
-        input_variables: Dict[str, InputVariable],
-        output_variables: Dict[str, OutputVariable],
+        input_variables: Dict[str, Variable],
+        output_variables: Dict[str, Variable],
     ) -> None:
         """Update process variables over Channel Access.
 
         Args:
-            input_variables (Dict[str, InputVariable]): List of lume-epics output variables.
+            input_variables (Dict[str, Variable]): List of lume-epics output variables.
 
-            output_variables (Dict[str, OutputVariable]): List of lume-model output variables.
+            output_variables (Dict[str, Variable]): List of lume-model output variables.
 
         """
         variables = input_variables
