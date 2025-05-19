@@ -231,7 +231,7 @@ class Server:
     def run_comm_thread(
         self,
         *,
-        running_indicator: Synchronized[Any],
+        running_indicator: Synchronized,
         in_queue: Optional[multiprocessing.Queue],
         out_queues: Optional[Dict[str, multiprocessing.Queue]],
     ):
@@ -239,7 +239,7 @@ class Server:
              dmodel.
 
         Arguments:
-            running_indicator (multiprocessing.Value): Indicates whether main server
+            running_indicator (Synchronized): Indicates whether main server
                 process active.
 
             in_queue (Optional[multiprocessing.Queue]): Queue receiving input variable

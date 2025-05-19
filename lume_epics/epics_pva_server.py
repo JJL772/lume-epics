@@ -2,6 +2,7 @@ import logging
 import copy
 import multiprocessing
 from multiprocessing.managers import DictProxy
+from multiprocessing.sharedctypes import Synchronized
 from queue import Full, Empty
 from lume_epics import model
 import numpy as np
@@ -57,7 +58,7 @@ class PVAServer(multiprocessing.Process):
         epics_config: dict,
         in_queue: multiprocessing.Queue,
         out_queue: multiprocessing.Queue,
-        running_indicator: multiprocessing.Value,
+        running_indicator: Synchronized,
         *args,
         **kwargs,
     ) -> None:
@@ -74,7 +75,7 @@ class PVAServer(multiprocessing.Process):
 
             out_queue (multiprocessing.Queue): Queue for tracking updates to output variables
 
-            running_indicator (multiprocessing.Value): Boolean indicator indicating running model execution
+            running_indicator (Synchronized): Boolean indicator indicating running model execution
 
         """
 

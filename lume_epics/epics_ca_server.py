@@ -1,6 +1,7 @@
 import copy
 import logging
 import multiprocessing
+from multiprocessing.sharedctypes import Synchronized
 import time
 import signal
 from typing import Dict
@@ -78,7 +79,7 @@ class CAServer(CAProcess):
 
         exit_event (multiprocessing.Event): Event indicating early exit
 
-        _running_indicator (multiprocessing.Value): Value indicating whether model execution ongoing
+        _running_indicator (Synchronized): Value indicating whether model execution ongoing
 
         _epics_config (dict): Dictionary describing EPICS configuration for model variables
 
@@ -97,7 +98,7 @@ class CAServer(CAProcess):
         epics_config: dict,
         in_queue: multiprocessing.Queue,
         out_queue: multiprocessing.Queue,
-        running_indicator: multiprocessing.Value,
+        running_indicator: Synchronized,
         *args,
         **kwargs,
     ) -> None:
@@ -109,7 +110,7 @@ class CAServer(CAProcess):
             epics_config (dict): Dictionary mapping pvname to EPICS configuration.
             in_queue (multiprocessing.Queue): Queue for tracking updates to input variables.
             out_queue (multiprocessing.Queue): Queue for tracking updates to output variables.
-            running_indicator (multiprocessing.Value): Multiprocessing value for indicating if server running.
+            running_indicator (Synchronized): Multiprocessing value for indicating if server running.
 
         """
         super().__init__(*args, **kwargs)
@@ -495,7 +496,7 @@ def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
                 }
             )
 
-            if "units" in variable.__fields_set__:
+            if "units" in variable.model_fields_set:
                 pvdb[f"{pvname}:ArrayData_RBV"]["unit"] = variable.units
 
             # handle rgb arrays
@@ -506,7 +507,7 @@ def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
                 }
 
         elif variable.variable_type == "scalar":
-            pvdb[pvname] = variable.dict(exclude_unset=True, by_alias=True)
+            pvdb[pvname] = variable.model_dump(exclude_unset=True, by_alias=True)
             if variable.value_range is not None:
                 pvdb[pvname]["hilim"] = variable.value_range[1]
                 pvdb[pvname]["lolim"] = variable.value_range[0]
@@ -555,7 +556,7 @@ def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
                 }
             )
 
-            if "units" in variable.__fields_set__:
+            if "units" in variable.model_fields_set:
                 pvdb[f"{pvname}:ArrayData_RBV"]["unit"] = variable.units
 
     return pvdb, child_to_parent_map

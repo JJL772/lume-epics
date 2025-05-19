@@ -53,7 +53,7 @@ class EpicsSlider:
 
         """
         title = self.variable.name
-        if "units" in self.variable.__fields_set__:
+        if "units" in self.variable.model_fields_set:
             title += " (" + self.variable.units + ")"
 
         self.pvname = self.variable.name
