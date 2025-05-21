@@ -101,6 +101,7 @@ class Server:
         self.model = model_class(**model_kwargs)
         self.input_variables = {v.name: v for v in self.model.input_variables}
         self.output_variables = {v.name: v for v in self.model.output_variables}
+        self.input_values = {}
 
         self._epics_config = epics_config
 
@@ -183,6 +184,14 @@ class Server:
                 for var in self.model.output_variables
                 if var.name in ca_config
             }
+            
+            self.input_values = {
+                var.name: 0.0 for var in self.model.input_variables
+            }
+            
+            self.output_values = {
+                var.name: 0.0 for var in self.model.output_variables
+            }
 
             self.ca_process = CAServer(
                 input_variables=ca_input_vars,
@@ -261,10 +270,11 @@ class Server:
 
                 for var in data["vars"]:
                     self.input_variables[var] = data["vars"][var]
+                    self.input_values[var] = data["vals"][var]
 
                 # check no input values are None
                 if not any(
-                    [var.value is None for var in self.input_variables.values()]
+                    [self.input_values is None for var in self.input_values]
                 ):
                     inputs_initialized = 1
 
@@ -284,20 +294,21 @@ class Server:
                             if len(inputs):
                                 queue.put({"input_variables": inputs})
 
-                    model_input = self.input_variables
+                    model_input = self.input_values
 
                     try:
                         predicted_output = model.evaluate(model_input)
 
                         for protocol, queue in out_queues.items():
-                            outputs = {
-                                var.name: var
-                                for var in predicted_output.values()
-                                if var.name in self._pva_fields
-                                or self._epics_config[var.name]["protocol"]
-                                in [protocol, "both"]
-                            }
-                            queue.put({"output_variables": outputs}, timeout=0.1)
+                            # Map variable to value
+                            #outputs = {
+                            #    var.name: predicted_output[var.name]
+                            #    for var in self.output_variables.values()
+                            #    if var.name in self._pva_fields
+                            #    or self._epics_config[var.name]["protocol"]
+                            #    in [protocol, "both"]
+                            #}
+                            queue.put({"output_variables": self.output_variables, "output_values": predicted_output}, timeout=0.1)
 
                     except Exception as e:
                         traceback.print_exc()

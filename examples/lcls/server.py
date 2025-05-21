@@ -19,12 +19,16 @@ class AmplSummationModel(LUMEBaseModel):
         #self.input_variables = input_variables
         #self.output_variables = output_variables
 
-    def _evaluate(self, input_variables: dict) -> dict:
+    def _evaluate(self, input_dict: dict) -> dict:
 
-        summation = sum([var.value for var in input_variables.values()])
-        self.output_dict["summation"].value = summation
+        #summation = sum(input_dict.values())
+        #self.output_dict["summation"] = summation
+        print(input_dict.values())
+        return {
+            "summation": float(sum(input_dict.values()))
+        }
 
-        return self.output_dict
+        return out
 
 
 if __name__ == "__main__":

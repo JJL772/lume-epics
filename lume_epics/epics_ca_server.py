@@ -4,7 +4,7 @@ import multiprocessing
 from multiprocessing.sharedctypes import Synchronized
 import time
 import signal
-from typing import Dict
+from typing import Dict, Any
 from lume_model.variables import Variable
 import numpy as np
 
@@ -126,6 +126,7 @@ class CAServer(CAProcess):
         self._epics_config = epics_config
         self.exit_event = multiprocessing.Event()
         self.shutdown_event = multiprocessing.Event()
+        self._values = {}
 
         # utility maps
         self._pvname_to_varname_map = {
@@ -158,6 +159,7 @@ class CAServer(CAProcess):
         variable: Variable = self._cached_values.get(model_var_name, variable)
 
         # check for image variable and proper assignments
+        # FIXME: This doesn't work and image variable types dont exist anymore.
         if variable.variable_type == "image":
 
             attr_type = pvname.split(":")[-1]
@@ -181,13 +183,13 @@ class CAServer(CAProcess):
 
         # assign value
         else:
-            variable.value = value
+            self._values[variable.name] = value
 
         self._cached_values[model_var_name] = variable
 
         # only update if not running
         if not self._running_indicator.value:
-            self._in_queue.put({"protocol": "ca", "vars": self._cached_values})
+            self._in_queue.put({"protocol": "ca", "vars": self._cached_values, "vals": self._values})
             self._cached_values = {}
 
     def _monitor_callback(self, pvname=None, value=None, **kwargs) -> None:
@@ -199,10 +201,12 @@ class CAServer(CAProcess):
             variable = self._output_variables.get(model_var_name)
 
         # check for already cached variable
-        variable = self._cached_values.get(model_var_name, variable)
+        variable: Variable = self._cached_values.get(model_var_name, variable)
 
         # check for image variable and proper assignments
-        if variable.variable_type == "image":
+        # FIXME: This doesn't work and image variable types dont exist anymore.
+        #if variable.variable_type == "image":
+        if False:
 
             attr_type = pvname.split(":")[-1]
 
@@ -224,18 +228,18 @@ class CAServer(CAProcess):
 
         # assign value
         else:
-            variable.value = value
+            self._values[variable.name] = value
 
         self._cached_values[model_var_name] = variable
 
         # only update if not running
         if not self._running_indicator.value:
-            self._in_queue.put({"protocol": "ca", "vars": self._cached_values})
+            self._in_queue.put({"protocol": "ca", "vars": self._cached_values, "vals": self._values})
             self._cached_values = {}
 
     def _initialize_model(self):
         """Initialize model"""
-        self._in_queue.put({"protocol": "ca", "vars": self._input_variables})
+        self._in_queue.put({"protocol": "ca", "vars": self._input_variables, "vals": self._values})
 
     def setup_server(self) -> None:
         """Configure and start server."""
@@ -247,7 +251,7 @@ class CAServer(CAProcess):
         # update value with stored defaults
         for var_name in self._input_variables:
             if self._epics_config[var_name]["serve"]:
-                self._input_variables[var_name].value = self._input_variables[
+                self._values[var_name] = self._input_variables[
                     var_name
                 ].default
 
@@ -261,7 +265,7 @@ class CAServer(CAProcess):
                     self.exit_event.set()
                     return False
 
-                self._input_variables[var_name].value = val
+                self._values[var_name] = val
 
         # initialize channel access server
         self._ca_server = SimpleServer()
@@ -368,6 +372,12 @@ class CAServer(CAProcess):
     def shutdown(self):
         """Safely shutdown the server process."""
         self.shutdown_event.set()
+        
+    def get_value(self, variable: str) -> Any | None:
+        try:
+            return self._values[variable]
+        except KeyError:
+            return None
 
 
 def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
@@ -391,6 +401,7 @@ def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
     for variable in variables:
         pvname = epics_config.get(variable.name)["pvname"]
 
+        # FIXME: This doesn't work and image variable types dont exist anymore.
         if variable.variable_type == "image":
 
             if variable.value is None:
@@ -515,6 +526,7 @@ def build_pvdb(variables: List[Variable], epics_config: dict) -> tuple:
             if variable.units is not None:
                 pvdb[pvname]["unit"] = variable.units
 
+        # FIXME: This doesn't work and array variable types dont exist anymore.
         elif variable.variable_type == "array":
 
             # assign default PVS
@@ -567,7 +579,7 @@ class CADriver(Driver):
     Class for handling read and write requests to Channel Access process variables.
     """
 
-    def __init__(self, server) -> None:
+    def __init__(self, server: CAServer) -> None:
         """Initialize the Channel Access driver. Store input state and output state."""
         super(CADriver, self).__init__()
         self.server = server
@@ -661,17 +673,18 @@ class CADriver(Driver):
                     logger.debug(
                         "Channel Access process variable %s updated wth value %s.",
                         pvname,
-                        variable.value,
+                        self.server.get_value(variable.name),
                     )
-                    self.setParam(pvname, variable.value)
+                    self.setParam(pvname, self.server.get_value(variable.name))
 
+            # FIXME: This doesn't work and image variable types dont exist anymore.
                 elif variable.variable_type == "array":
                     logger.debug(
                         "Channel Access image process variable %s updated.",
                         pvname,
                     )
 
-                    self.setParam(pvname + ":ArrayData_RBV", variable.value.flatten())
+                    self.setParam(pvname + ":ArrayData_RBV", self.server.get_value(variable.name).flatten())
 
                 else:
                     logger.debug(
